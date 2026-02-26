@@ -1,9 +1,7 @@
 const express = require('express');
-const { Pool } = require('pg'); // Mudamos de mysql2 para pg
+const { Pool } = require('pg'); // Usando PostgreSQL
 const path = require('path');
 const session = require('express-session');
-const exceljs = require('exceljs');
-const PDFDocument = require('pdfkit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,12 +14,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(session({ secret: 'chave_secreta_faama', resave: false, saveUninitialized: true }));
 
-// === CONFIGURAÇÃO DO POOL POSTGRESQL (NÍVEL IMPRESSIONADOR) ===
+// Conexão com o banco do Render
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL, // O Render preenche isso sozinho se você configurar no painel
-    ssl: {
-        rejectUnauthorized: false // Necessário para conexões seguras na nuvem
-    }
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
 });
 
 function checkAuth(req, res, next) {
@@ -32,6 +28,38 @@ function checkAuth(req, res, next) {
         res.redirect('/');
     }
 }
+
+// ================= ROTA SECRETA PARA CRIAR AS TABELAS =================
+app.get('/setup-db', async (req, res) => {
+    try {
+        const query = `
+            CREATE TABLE IF NOT EXISTS eixos (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                descricao TEXT
+            );
+            CREATE TABLE IF NOT EXISTS grupos (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                eixo_id INTEGER REFERENCES eixos(id) ON DELETE CASCADE
+            );
+            CREATE TABLE IF NOT EXISTS alunos (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                curso VARCHAR(100),
+                turno VARCHAR(50),
+                periodo INTEGER,
+                grupo_id INTEGER REFERENCES grupos(id) ON DELETE CASCADE
+            );
+        `;
+        await pool.query(query);
+        res.send("<h1>Tabelas criadas com sucesso, Impressionador! 🚀</h1><a href='/'>Voltar pro portal</a>");
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Erro ao criar as tabelas: " + error.message);
+    }
+});
 
 // ================= ROTA 1: PORTAL INICIAL =================
 app.get('/', (req, res) => {
@@ -44,21 +72,18 @@ app.get('/', (req, res) => {
 app.get('/aluno', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM eixos');
-        const eixos = result.rows;
-        
         const erro = req.session.erro;
         req.session.erro = null; 
-        res.render('index', { eixos, erro });
+        res.render('index', { eixos: result.rows, erro });
     } catch (error) {
         console.error("Erro banco de dados:", error);
-        res.status(500).send("Erro interno no servidor de banco de dados.");
+        res.status(500).send("Erro interno no servidor de banco de dados (Postgres).");
     }
 });
 
-// ================= ROTA 3: INSCREVER E SORTEAR =================
+// ================= ROTA 3: INSCREVER =================
 app.post('/inscrever', async (req, res) => {
     const { nome, email, curso, turno, periodo, eixo_id } = req.body;
-
     try {
         const gruposRes = await pool.query('SELECT id, nome FROM grupos WHERE eixo_id = $1', [eixo_id]);
         const grupos = gruposRes.rows;
@@ -69,16 +94,12 @@ app.post('/inscrever', async (req, res) => {
         }
 
         let gruposDisponiveis = [];
-
         for (let g of grupos) {
             const totalCountRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1', [g.id]);
             const totalAlunos = parseInt(totalCountRes.rows[0].qtd);
 
             if (totalAlunos < LIMITE_POR_GRUPO) {
-                const cursoCountRes = await pool.query(
-                    'SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1 AND curso = $2', 
-                    [g.id, curso]
-                );
+                const cursoCountRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1 AND curso = $2', [g.id, curso]);
                 gruposDisponiveis.push({ id: g.id, nome: g.nome, total_curso: parseInt(cursoCountRes.rows[0].qtd) });
             }
         }
@@ -98,7 +119,6 @@ app.post('/inscrever', async (req, res) => {
         );
 
         res.render('resultado', { nome, grupo: grupoSorteado.nome });
-
     } catch (error) {
         console.error(error);
         req.session.erro = "Erro ao processar sua inscrição.";
@@ -110,17 +130,13 @@ app.post('/inscrever', async (req, res) => {
 app.get('/admin', checkAuth, async (req, res) => {
     try {
         const eixosRes = await pool.query('SELECT * FROM eixos');
-        const eixos = eixosRes.rows;
-        
         let relatorio = {};
 
-        for (let eixo of eixos) {
+        for (let eixo of eixosRes.rows) {
             const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1', [eixo.id]);
-            const grupos = gruposRes.rows;
-            
             relatorio[eixo.nome] = [];
 
-            for (let grupo of grupos) {
+            for (let grupo of gruposRes.rows) {
                 const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1', [grupo.id]);
                 const totalCountRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1', [grupo.id]);
 
@@ -131,9 +147,7 @@ app.get('/admin', checkAuth, async (req, res) => {
                 });
             }
         }
-
         res.render('admin', { relatorio });
-        
     } catch (error) {
         console.error("Erro ao carregar admin:", error);
         res.status(500).send("Erro ao carregar o painel administrativo.");
@@ -143,22 +157,13 @@ app.get('/admin', checkAuth, async (req, res) => {
 // ================= ROTA 5: CRIAR EIXO =================
 app.post('/admin/criar_eixo', checkAuth, async (req, res) => {
     const { nome_eixo, descricao, qtd_grupos } = req.body;
-
     try {
-        const result = await pool.query(
-            'INSERT INTO eixos (nome, descricao) VALUES ($1, $2) RETURNING id', 
-            [nome_eixo, descricao]
-        );
-        
+        const result = await pool.query('INSERT INTO eixos (nome, descricao) VALUES ($1, $2) RETURNING id', [nome_eixo, descricao]);
         const eixoId = result.rows[0].id;
 
         for (let i = 1; i <= qtd_grupos; i++) {
-            await pool.query(
-                'INSERT INTO grupos (nome, eixo_id) VALUES ($1, $2)', 
-                [`Equipe ${i} - ${nome_eixo}`, eixoId]
-            );
+            await pool.query('INSERT INTO grupos (nome, eixo_id) VALUES ($1, $2)', [`Equipe ${i} - ${nome_eixo}`, eixoId]);
         }
-
         res.redirect('/admin');
     } catch (error) {
         console.error(error);
@@ -182,41 +187,4 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
-// ================= ROTA SECRETA PARA CRIAR AS TABELAS =================
-app.get('/setup-db', async (req, res) => {
-    try {
-        const query = `
-            CREATE TABLE IF NOT EXISTS eixos (
-                id SERIAL PRIMARY KEY,
-                nome VARCHAR(255) NOT NULL,
-                descricao TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS grupos (
-                id SERIAL PRIMARY KEY,
-                nome VARCHAR(255) NOT NULL,
-                eixo_id INTEGER REFERENCES eixos(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS alunos (
-                id SERIAL PRIMARY KEY,
-                nome VARCHAR(255) NOT NULL,
-                email VARCHAR(255) NOT NULL,
-                curso VARCHAR(100),
-                turno VARCHAR(50),
-                periodo INTEGER,
-                grupo_id INTEGER REFERENCES grupos(id) ON DELETE CASCADE
-            );
-        `;
-        
-        await pool.query(query);
-        res.send("<h1>Tabelas criadas com sucesso, Impressionador! 🚀</h1><a href='/'>Voltar pro portal</a>");
-    } catch (error) {
-        console.error(error);
-        res.status(500).send("Erro ao criar as tabelas: " + error.message);
-    }
-});
-
-app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
