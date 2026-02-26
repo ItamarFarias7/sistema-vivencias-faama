@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Painel Administrativo</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container {
+      max-width: 1000px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+
+    .nav-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      padding: 15px 20px;
+      border-radius: var(--border-radius);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      margin-bottom: 30px;
+    }
+
+    .grid-equipes {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .equipe-card {
+      background: white;
+      border-top: 4px solid var(--primary-color);
+      padding: 15px;
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .badge {
+      background: #e9ecef;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .btn-sm {
+      padding: 8px 12px;
+      font-size: 14px;
+      text-decoration: none;
+      border-radius: 4px;
+      color: white;
+      display: inline-block;
+    }
+  </style>
+</head>
+
+<body style="display: block;">
+  <div class="admin-container">
+    <div class="nav-bar">
+      <div>
+        <a href="/" style="color: var(--primary-color); text-decoration: none; font-weight: bold;">← Ver Tela do
+          Aluno</a>
+        <a href="/logout" style="color: #dc3545; text-decoration: none; font-weight: bold; margin-left: 20px;">Sair
+          🚪</a>
+      </div>
+      <div>
+        <a href="/admin/exportar/excel" class="btn-sm"
+          style="background: var(--secondary-color); margin-right: 10px;">📊 Baixar Excel</a>
+        <a href="/admin/exportar/pdf" class="btn-sm" style="background: #dc3545;">📄 Baixar PDF</a>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 30px;">
+      <h2 style="color: var(--primary-color); margin-top: 0;">Criar Novo Eixo</h2>
+      <form action="/admin/criar_eixo" method="POST" class="row">
+        <div class="form-group col">
+          <input type="text" name="nome_eixo" class="form-control" placeholder="Nome (Ex: Saúde)" required>
+        </div>
+        <div class="form-group col">
+          <input type="text" name="descricao" class="form-control" placeholder="Descrição" required>
+        </div>
+        <div class="form-group col" style="max-width: 150px;">
+          <input type="number" name="qtd_grupos" class="form-control" placeholder="Nº Grupos" min="1" required>
+        </div>
+        <button type="submit" class="btn-primary" style="margin-top: 0; max-width: 150px;">Gerar Eixo</button>
+      </form>
+    </div>
+
+    <% Object.keys(relatorio).forEach(function(nomeEixo) { %>
+      <h3 style="border-bottom: 2px solid #ccc; padding-bottom: 10px; color: #555;">📍 <%= nomeEixo %>
+      </h3>
+      <div class="grid-equipes" style="margin-bottom: 40px;">
+        <% relatorio[nomeEixo].forEach(function(grupo) { %>
+          <div class="equipe-card">
+            <h4 style="margin: 0 0 10px 0;">
+              <%= grupo.nome_grupo %> <span class="badge">
+                  <%= grupo.total %>/10
+                </span>
+            </h4>
+            <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px;">
+              <% grupo.alunos.forEach(function(aluno) { %>
+                <li
+                  style="padding: 5px 0; border-bottom: 1px solid #f1f1f1; display: flex; justify-content: space-between;">
+                  <%= aluno.nome %>
+                    <span class="badge">
+                      <%= aluno.curso %> - <%= aluno.periodo %>ºP
+                    </span>
+                </li>
+                <% }); %>
+            </ul>
+          </div>
+          <% }); %>
+      </div>
+      <% }); %>
+  </div>
+</body>
+
+</html>

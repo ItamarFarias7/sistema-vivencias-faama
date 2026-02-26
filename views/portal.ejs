@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal FAAMA | Gamifica Aí</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .portal-container {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .portal-card {
+      flex: 1;
+      min-width: 25rem;
+      text-align: center;
+    }
+
+    .icone {
+      font-size: 5rem;
+      margin-bottom: 1.5rem;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <section style="text-align: center; margin-bottom: 4rem;">
+      <h1>Sistema de Grupos</h1>
+      <p>Selecione o seu perfil para acessar o sistema</p>
+    </section>
+
+    <% if (typeof erro !=='undefined' && erro) { %>
+      <div
+        style="background-color: #ffe3e6; color: #c82333; padding: 1.5rem; border-radius: 0.8rem; text-align: center; margin-bottom: 2rem;">
+        <%= erro %>
+      </div>
+      <% } %>
+
+        <section class="portal-container">
+          <div class="card portal-card" style="border-top-color: var(--secondary-color);">
+            <div class="icone">👨‍🎓</div>
+            <h3>Sou Aluno</h3>
+            <p style="font-size: 1.4rem; color: #666; margin-bottom: 2rem;">Quero me inscrever e ser sorteado para uma
+              equipe.</p>
+            <a href="/aluno" class="botao botao-secundario" style="display: block; width: 100%;">Entrar sem senha</a>
+          </div>
+
+          <div class="card portal-card">
+            <div class="icone">👨‍🏫</div>
+            <h3 style="color: var(--primary-color);">Sou Professor / Gestor</h3>
+            <p style="font-size: 1.4rem; color: #666; margin-bottom: 2rem;">Acessar painel de relatórios e criação de
+              eixos.</p>
+            <form action="/login" method="POST">
+              <input type="password" name="senha" required placeholder="Digite a senha" style="margin-bottom: 1.5rem;">
+              <button type="submit" class="botao" style="width: 100%;">Acessar Painel</button>
+            </form>
+          </div>
+        </section>
+  </main>
+</body>
+
+</html>

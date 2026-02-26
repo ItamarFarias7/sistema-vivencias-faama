@@ -1,0 +1,164 @@
+/* Variáveis Institucionais FAAMA */
+:root {
+  --primary-color: #004a9f;
+  --secondary-color: #28a745;
+  --bg-color: #f4f5f7;
+  --text-color: #404040;
+}
+
+/* Global - Padrão Hashtag */
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 62.5%;
+}
+
+body {
+  font-family: "Montserrat", sans-serif;
+  color: var(--text-color);
+  font-size: 1.6rem;
+  line-height: 1.4;
+  background-color: var(--bg-color);
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.32rem;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+h2 {
+  font-size: 2.76rem;
+  line-height: 1.1;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+h3 {
+  font-size: 2.3rem;
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--secondary-color);
+}
+
+p {
+  font-size: 1.6rem;
+}
+
+strong {
+  font-weight: 600;
+}
+
+ul {
+  list-style: none;
+}
+
+/* Estrutura */
+.container {
+  width: 100%;
+  max-width: 100rem;
+  padding: 2rem;
+  margin: 0 auto;
+}
+
+.card {
+  background: #ffffff;
+  padding: 4rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.05);
+  border-top: solid 0.5rem var(--primary-color);
+}
+
+/* Formulários */
+.form-group {
+  margin-bottom: 2rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.8rem;
+  font-weight: 600;
+  color: #555;
+  font-size: 1.4rem;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 1.2rem;
+  background-color: white;
+  box-shadow: inset 0 0 0.2rem 0.2rem rgba(0, 0, 0, 0.05);
+  border: 0.1rem solid #ced4da;
+  border-radius: 0.8rem;
+  font-family: inherit;
+  font-size: 1.5rem;
+  color: var(--text-color);
+  transition: border-color 0.3s;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+/* Botões */
+.botao {
+  display: inline-block;
+  font-size: 1.6rem;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 0.8rem;
+  padding: 1.2rem 2.5rem;
+  color: white;
+  box-shadow: 0 0.21rem 0.8rem rgba(0, 0, 0, 0.1);
+  border: none;
+  background-color: var(--primary-color);
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.botao:hover {
+  background-color: #003675;
+}
+
+.botao-secundario {
+  background-color: var(--secondary-color);
+}
+
+.botao-secundario:hover {
+  background-color: #218838;
+}
+
+/* Grid e Layout */
+.row {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.col {
+  flex: 1;
+}
+
+.botao-voltar {
+  display: flex;
+  width: 20%;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  box-shadow: inset 0 0 0.4rem 0.1rem rgba(0, 0, 0, 0.15);
+  background-color: #F5F5F5;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-left: 40%;
+}

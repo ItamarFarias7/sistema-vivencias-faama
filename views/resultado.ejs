@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Inscrição Confirmada</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div class="container" style="text-align: center;">
+    <div class="card">
+      <h1 style="color: var(--secondary-color);">Inscrição Confirmada!</h1>
+      <p style="font-size: 18px;">Parabéns, <strong>
+          <%= nome %>
+        </strong>!</p>
+      <p>O sistema sorteou você para a equipe:</p>
+      <div
+        style="font-size: 24px; font-weight: bold; color: var(--primary-color); background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <%= grupo %>
+      </div>
+      <a href="/" class="btn-primary" style="text-decoration: none; display: inline-block;">Fazer Nova Inscrição</a>
+    </div>
+  </div>
+</body>
+
+</html>
