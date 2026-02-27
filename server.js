@@ -2,6 +2,8 @@ const express = require('express');
 const { Pool } = require('pg'); // Usando PostgreSQL
 const path = require('path');
 const session = require('express-session');
+const exceljs = require('exceljs');
+const PDFDocument = require('pdfkit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
