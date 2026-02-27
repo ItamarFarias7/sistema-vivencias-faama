@@ -187,4 +187,102 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
+// ================= ROTA EXPORTAR EXCEL =================
+app.get('/admin/exportar/excel', checkAuth, async (req, res) => {
+    try {
+        const workbook = new exceljs.Workbook();
+        const worksheet = workbook.addWorksheet('Relatório de Equipes');
+
+        // Criando o cabeçalho das colunas do Excel
+        worksheet.columns = [
+            { header: 'Eixo', key: 'eixo', width: 20 },
+            { header: 'Grupo', key: 'grupo', width: 25 },
+            { header: 'Nome do Aluno', key: 'nome', width: 30 },
+            { header: 'Email', key: 'email', width: 30 },
+            { header: 'Curso', key: 'curso', width: 25 },
+            { header: 'Turno', key: 'turno', width: 15 },
+            { header: 'Período', key: 'periodo', width: 10 }
+        ];
+
+        // Consulta avançada juntando as 3 tabelas (Alunos, Grupos e Eixos)
+        const query = `
+            SELECT a.nome as aluno_nome, a.email, a.curso, a.turno, a.periodo,
+                   g.nome as grupo_nome, e.nome as eixo_nome
+            FROM alunos a
+            JOIN grupos g ON a.grupo_id = g.id
+            JOIN eixos e ON g.eixo_id = e.id
+            ORDER BY e.nome, g.nome, a.nome
+        `;
+        const result = await pool.query(query);
+
+        // Preenchendo as linhas do Excel
+        result.rows.forEach(row => {
+            worksheet.addRow({
+                eixo: row.eixo_nome,
+                grupo: row.grupo_nome,
+                nome: row.aluno_nome,
+                email: row.email,
+                curso: row.curso,
+                turno: row.turno,
+                periodo: row.periodo + 'º'
+            });
+        });
+
+        // Enviando o arquivo para download
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=' + 'relatorio_equipes_faama.xlsx');
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error) {
+        console.error("Erro ao exportar Excel:", error);
+        res.status(500).send("Erro ao gerar o Excel.");
+    }
+});
+
+// ================= ROTA EXPORTAR PDF =================
+app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
+    try {
+        const doc = new PDFDocument();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=relatorio_equipes_faama.pdf');
+        doc.pipe(res);
+
+        // Título do PDF
+        doc.fontSize(20).fillColor('#004a9f').text('Relatório Oficial de Equipes - FAAMA', { align: 'center' });
+        doc.moveDown();
+
+        const eixosRes = await pool.query('SELECT * FROM eixos ORDER BY nome');
+
+        // Para cada eixo, listamos os grupos e alunos
+        for (let eixo of eixosRes.rows) {
+            doc.fontSize(16).fillColor('#000000').text(`EIXO: ${eixo.nome}`);
+            doc.moveDown(0.5);
+
+            const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1 ORDER BY nome', [eixo.id]);
+
+            for (let grupo of gruposRes.rows) {
+                doc.fontSize(14).fillColor('#28a745').text(`  ${grupo.nome}`);
+                
+                const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1 ORDER BY nome', [grupo.id]);
+                
+                if (alunosRes.rows.length === 0) {
+                    doc.fontSize(12).fillColor('#666666').text('    (Nenhum aluno inscrito ainda)');
+                } else {
+                    alunosRes.rows.forEach(aluno => {
+                        doc.fontSize(12).fillColor('#333333').text(`    - ${aluno.nome} (${aluno.curso}, ${aluno.periodo}º P)`);
+                    });
+                }
+                doc.moveDown(0.5);
+            }
+            doc.moveDown();
+        }
+
+        doc.end();
+    } catch (error) {
+        console.error("Erro ao exportar PDF:", error);
+        res.status(500).send("Erro ao gerar o PDF.");
+    }
+});
+
 app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
