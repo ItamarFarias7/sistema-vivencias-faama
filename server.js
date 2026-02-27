@@ -256,13 +256,15 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
 
         // Para cada eixo, listamos os grupos e alunos
         for (let eixo of eixosRes.rows) {
-            doc.fontSize(16).fillColor('#000000').text(`EIXO: ${eixo.nome}`);
+            const nomeEixo = eixo.nome ? String(eixo.nome) : 'Eixo sem nome';
+            doc.fontSize(16).fillColor('#000000').text(`EIXO: ${nomeEixo}`);
             doc.moveDown(0.5);
 
             const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1 ORDER BY nome', [eixo.id]);
 
             for (let grupo of gruposRes.rows) {
-                doc.fontSize(14).fillColor('#28a745').text(`  ${grupo.nome}`);
+                const nomeGrupo = grupo.nome ? String(grupo.nome) : 'Grupo sem nome';
+                doc.fontSize(14).fillColor('#28a745').text(`  ${nomeGrupo}`);
                 
                 const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1 ORDER BY nome', [grupo.id]);
                 
@@ -270,7 +272,12 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
                     doc.fontSize(12).fillColor('#666666').text('    (Nenhum aluno inscrito ainda)');
                 } else {
                     alunosRes.rows.forEach(aluno => {
-                        doc.fontSize(12).fillColor('#333333').text(`    - ${aluno.nome} (${aluno.curso}, ${aluno.periodo}º P)`);
+                        // Travas de segurança para evitar que o PDFKit trave com valores nulos
+                        const nomeAluno = aluno.nome ? String(aluno.nome) : 'Aluno sem nome';
+                        const cursoAluno = aluno.curso ? String(aluno.curso) : 'Curso N/A';
+                        const periodoAluno = aluno.periodo ? String(aluno.periodo) : '-';
+                        
+                        doc.fontSize(12).fillColor('#333333').text(`    - ${nomeAluno} (${cursoAluno}, ${periodoAluno}º P)`);
                     });
                 }
                 doc.moveDown(0.5);
@@ -280,8 +287,11 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
 
         doc.end();
     } catch (error) {
-        console.error("Erro ao exportar PDF:", error);
-        res.status(500).send("Erro ao gerar o PDF.");
+        // Agora o erro real vai aparecer nos logs do Render
+        console.error("Erro EXATO ao exportar PDF:", error);
+        if (!res.headersSent) {
+            res.status(500).send("Erro ao gerar o PDF. Verifique os logs no Render.");
+        }
     }
 });
 
