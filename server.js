@@ -83,9 +83,10 @@ app.get('/aluno', async (req, res) => {
     }
 });
 
-// ================= ROTA 3: INSCREVER =================
+// ================= ROTA 3: INSCREVER E SORTEAR (ATUALIZADA) =================
 app.post('/inscrever', async (req, res) => {
     const { nome, email, curso, turno, periodo, eixo_id } = req.body;
+
     try {
         const gruposRes = await pool.query('SELECT id, nome FROM grupos WHERE eixo_id = $1', [eixo_id]);
         const grupos = gruposRes.rows;
@@ -96,12 +97,16 @@ app.post('/inscrever', async (req, res) => {
         }
 
         let gruposDisponiveis = [];
+
         for (let g of grupos) {
             const totalCountRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1', [g.id]);
             const totalAlunos = parseInt(totalCountRes.rows[0].qtd);
 
             if (totalAlunos < LIMITE_POR_GRUPO) {
-                const cursoCountRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1 AND curso = $2', [g.id, curso]);
+                const cursoCountRes = await pool.query(
+                    'SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1 AND curso = $2', 
+                    [g.id, curso]
+                );
                 gruposDisponiveis.push({ id: g.id, nome: g.nome, total_curso: parseInt(cursoCountRes.rows[0].qtd) });
             }
         }
@@ -115,12 +120,24 @@ app.post('/inscrever', async (req, res) => {
         const gruposCandidatos = gruposDisponiveis.filter(g => g.total_curso === minCurso);
         const grupoSorteado = gruposCandidatos[Math.floor(Math.random() * gruposCandidatos.length)];
 
+        // Insere o aluno novo
         await pool.query(
             'INSERT INTO alunos (nome, email, curso, turno, periodo, grupo_id) VALUES ($1, $2, $3, $4, $5, $6)',
             [nome, email, curso, turno, periodo, grupoSorteado.id]
         );
 
-        res.render('resultado', { nome, grupo: grupoSorteado.nome });
+        // NOVA PARTE: Busca quem já está nesse grupo para mostrar na tela
+        const colegasRes = await pool.query(
+            'SELECT nome, curso FROM alunos WHERE grupo_id = $1 ORDER BY nome', 
+            [grupoSorteado.id]
+        );
+
+        res.render('resultado', { 
+            nome, 
+            grupo: grupoSorteado.nome, 
+            colegas: colegasRes.rows 
+        });
+
     } catch (error) {
         console.error(error);
         req.session.erro = "Erro ao processar sua inscrição.";
@@ -128,18 +145,32 @@ app.post('/inscrever', async (req, res) => {
     }
 });
 
-// ================= ROTA 4: PAINEL ADMIN =================
+
+// ================= ROTA 4: PAINEL ADMIN (ATUALIZADA) =================
 app.get('/admin', checkAuth, async (req, res) => {
     try {
         const eixosRes = await pool.query('SELECT * FROM eixos');
+        const eixos = eixosRes.rows;
+        
+        // NOVA PARTE: Busca todos os grupos para o "Select" de realocação
+        const listaGruposRes = await pool.query(`
+            SELECT g.id, g.nome as grupo_nome, e.nome as eixo_nome 
+            FROM grupos g 
+            JOIN eixos e ON g.eixo_id = e.id 
+            ORDER BY e.nome, g.nome
+        `);
+        const todosGrupos = listaGruposRes.rows;
+
         let relatorio = {};
 
-        for (let eixo of eixosRes.rows) {
+        for (let eixo of eixos) {
             const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1', [eixo.id]);
+            const grupos = gruposRes.rows;
+            
             relatorio[eixo.nome] = [];
 
-            for (let grupo of gruposRes.rows) {
-                const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1', [grupo.id]);
+            for (let grupo of grupos) {
+                const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1 ORDER BY nome', [grupo.id]);
                 const totalCountRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1', [grupo.id]);
 
                 relatorio[eixo.nome].push({
@@ -149,10 +180,40 @@ app.get('/admin', checkAuth, async (req, res) => {
                 });
             }
         }
-        res.render('admin', { relatorio });
+
+        res.render('admin', { relatorio, todosGrupos });
+        
     } catch (error) {
         console.error("Erro ao carregar admin:", error);
         res.status(500).send("Erro ao carregar o painel administrativo.");
+    }
+});
+
+
+// ================= NOVAS ROTAS DE GESTÃO (EXCLUIR E MOVER) =================
+app.post('/admin/excluir_aluno', checkAuth, async (req, res) => {
+    const { aluno_id } = req.body;
+    try {
+        await pool.query('DELETE FROM alunos WHERE id = $1', [aluno_id]);
+        res.redirect('/admin');
+    } catch (error) {
+        console.error("Erro ao excluir aluno:", error);
+        res.redirect('/admin');
+    }
+});
+
+app.post('/admin/mover_aluno', checkAuth, async (req, res) => {
+    const { aluno_id, novo_grupo_id } = req.body;
+    try {
+        // Verifica se o novo grupo não está cheio (opcional, mas recomendado)
+        const countRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1', [novo_grupo_id]);
+        if (parseInt(countRes.rows[0].qtd) < LIMITE_POR_GRUPO) {
+            await pool.query('UPDATE alunos SET grupo_id = $1 WHERE id = $2', [novo_grupo_id, aluno_id]);
+        }
+        res.redirect('/admin');
+    } catch (error) {
+        console.error("Erro ao mover aluno:", error);
+        res.redirect('/admin');
     }
 });
 

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/css/style.css">
   <style>
     .admin-container {
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 20px auto;
       padding: 0 20px;
     }
@@ -18,14 +18,14 @@
       align-items: center;
       background: white;
       padding: 15px 20px;
-      border-radius: var(--border-radius);
+      border-radius: 8px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
       margin-bottom: 30px;
     }
 
     .grid-equipes {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
       gap: 20px;
     }
 
@@ -33,7 +33,7 @@
       background: white;
       border-top: 4px solid var(--primary-color);
       padding: 15px;
-      border-radius: var(--border-radius);
+      border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     }
 
@@ -52,6 +52,37 @@
       border-radius: 4px;
       color: white;
       display: inline-block;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Estilos novos para as ações do admin */
+    .aluno-item {
+      padding: 10px 0;
+      border-bottom: 1px solid #f1f1f1;
+    }
+
+    .aluno-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .aluno-acoes {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background-color: #fcfcfc;
+      padding: 5px;
+      border-radius: 5px;
+    }
+
+    .select-mover {
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 12px;
+      width: 140px;
     }
   </style>
 </head>
@@ -72,8 +103,8 @@
       </div>
     </div>
 
-    <div class="card" style="margin-bottom: 30px;">
-      <h2 style="color: var(--primary-color); margin-top: 0;">Criar Novo Eixo</h2>
+    <div class="card" style="margin-bottom: 30px; padding: 2rem;">
+      <h2 style="color: var(--primary-color); margin-top: 0; margin-bottom: 2rem;">Criar Novo Eixo</h2>
       <form action="/admin/criar_eixo" method="POST" class="row">
         <div class="form-group col">
           <input type="text" name="nome_eixo" class="form-control" placeholder="Nome (Ex: Saúde)" required>
@@ -84,29 +115,62 @@
         <div class="form-group col" style="max-width: 150px;">
           <input type="number" name="qtd_grupos" class="form-control" placeholder="Nº Grupos" min="1" required>
         </div>
-        <button type="submit" class="btn-primary" style="margin-top: 0; max-width: 150px;">Gerar Eixo</button>
+        <button type="submit" class="botao"
+          style="margin-top: 0; max-width: 150px; height: 4.5rem; padding: 0;">Gerar</button>
       </form>
     </div>
 
     <% Object.keys(relatorio).forEach(function(nomeEixo) { %>
-      <h3 style="border-bottom: 2px solid #ccc; padding-bottom: 10px; color: #555;">📍 <%= nomeEixo %>
+      <h3 style="border-bottom: 2px solid #ccc; padding-bottom: 10px; color: #555; margin-top: 30px;">📍 <%= nomeEixo %>
       </h3>
+
       <div class="grid-equipes" style="margin-bottom: 40px;">
         <% relatorio[nomeEixo].forEach(function(grupo) { %>
           <div class="equipe-card">
-            <h4 style="margin: 0 0 10px 0;">
-              <%= grupo.nome_grupo %> <span class="badge">
+            <h4 style="margin: 0 0 10px 0; display: flex; justify-content: space-between;">
+              <%= grupo.nome_grupo %>
+                <span class="badge">
                   <%= grupo.total %>/10
                 </span>
             </h4>
+
             <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px;">
               <% grupo.alunos.forEach(function(aluno) { %>
-                <li
-                  style="padding: 5px 0; border-bottom: 1px solid #f1f1f1; display: flex; justify-content: space-between;">
-                  <%= aluno.nome %>
+                <li class="aluno-item">
+                  <div class="aluno-info">
+                    <strong>
+                      <%= aluno.nome %>
+                    </strong>
                     <span class="badge">
                       <%= aluno.curso %> - <%= aluno.periodo %>ºP
                     </span>
+                  </div>
+
+                  <div class="aluno-acoes">
+                    <form action="/admin/mover_aluno" method="POST" style="display: flex; gap: 5px; flex: 1;">
+                      <input type="hidden" name="aluno_id" value="<%= aluno.id %>">
+                      <select name="novo_grupo_id" class="select-mover" required>
+                        <option value="">Mover para...</option>
+                        <% todosGrupos.forEach(function(tg) { %>
+                          <% if (tg.id !==grupo.id) { %>
+                            <option value="<%= tg.id %>">
+                              <%= tg.eixo_nome %> - <%= tg.grupo_nome %>
+                            </option>
+                            <% } %>
+                              <% }); %>
+                      </select>
+                      <button type="submit" class="btn-sm"
+                        style="background: var(--primary-color); padding: 4px 8px; font-size: 12px;">Mover</button>
+                    </form>
+
+                    <form action="/admin/excluir_aluno" method="POST"
+                      onsubmit="return confirm('Tem certeza que deseja excluir o aluno <%= aluno.nome %>?');">
+                      <input type="hidden" name="aluno_id" value="<%= aluno.id %>">
+                      <button type="submit" class="btn-sm"
+                        style="background: #dc3545; padding: 4px 8px; font-size: 12px;">Excluir</button>
+                    </form>
+                  </div>
+
                 </li>
                 <% }); %>
             </ul>

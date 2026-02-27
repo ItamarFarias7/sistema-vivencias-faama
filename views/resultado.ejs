@@ -8,18 +8,45 @@
 </head>
 
 <body>
-  <div class="container" style="text-align: center;">
+  <div class="container" style="text-align: center; max-width: 600px;">
     <div class="card">
       <h1 style="color: var(--secondary-color);">Inscrição Confirmada!</h1>
-      <p style="font-size: 18px;">Parabéns, <strong>
+      <p style="font-size: 1.8rem; margin-top: 1rem;">Parabéns, <strong>
           <%= nome %>
         </strong>!</p>
-      <p>O sistema sorteou você para a equipe:</p>
+      <p style="margin-top: 1rem;">O sistema sorteou você para a equipe:</p>
+
       <div
-        style="font-size: 24px; font-weight: bold; color: var(--primary-color); background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        style="font-size: 2.4rem; font-weight: bold; color: var(--primary-color); background: #e3f2fd; padding: 1.5rem; border-radius: 0.8rem; margin: 2rem 0;">
         <%= grupo %>
       </div>
-      <a href="/" class="btn-primary" style="text-decoration: none; display: inline-block;">Fazer Nova Inscrição</a>
+
+      <h3 style="margin-top: 3rem; margin-bottom: 1.5rem; font-size: 1.8rem; color: var(--text-color);">Sua Equipe
+        Atual:</h3>
+
+      <div
+        style="background-color: #f9f9f9; border-radius: 1rem; padding: 2rem; text-align: left; box-shadow: inset 0 0 0.5rem rgba(0,0,0,0.05); margin-bottom: 3rem;">
+        <% if (colegas && colegas.length> 0) { %>
+          <ul style="list-style: none; padding: 0; margin: 0;">
+            <% colegas.forEach(function(colega) { %>
+              <li
+                style="padding: 0.8rem 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                <strong>
+                  <%= colega.nome %>
+                </strong>
+                <span style="color: #666; font-size: 1.4rem;">
+                  <%= colega.curso %>
+                </span>
+              </li>
+              <% }); %>
+          </ul>
+          <% } else { %>
+            <p style="text-align: center; color: #666; font-style: italic;">Você é o primeiro desta equipe! Em breve
+              novos colegas aparecerão aqui.</p>
+            <% } %>
+      </div>
+
+      <a href="/" class="botao">Concluir / Nova Inscrição</a>
     </div>
   </div>
 </body>
