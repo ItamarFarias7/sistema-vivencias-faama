@@ -70,13 +70,37 @@ app.get('/', (req, res) => {
     res.render('portal', { erro });
 });
 
-// ================= ROTA 2: TELA DO ALUNO =================
+// ================= ROTA 2: TELA DO ALUNO (ATUALIZADA) =================
 app.get('/aluno', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM eixos');
+        // 1. Busca os eixos para o formulário de inscrição
+        const eixosRes = await pool.query('SELECT * FROM eixos');
+        const eixos = eixosRes.rows;
+
+        // 2. NOVA PARTE: Monta o relatório público para mostrar na tela
+        let relatorio = {};
+
+        for (let eixo of eixos) {
+            const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1 ORDER BY nome', [eixo.id]);
+            relatorio[eixo.nome] = [];
+
+            for (let grupo of gruposRes.rows) {
+                const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1 ORDER BY nome', [grupo.id]);
+                const totalCountRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1', [grupo.id]);
+
+                relatorio[eixo.nome].push({
+                    nome_grupo: grupo.nome,
+                    total: totalCountRes.rows[0].qtd,
+                    alunos: alunosRes.rows
+                });
+            }
+        }
+
         const erro = req.session.erro;
         req.session.erro = null; 
-        res.render('index', { eixos: result.rows, erro });
+        
+        // Agora mandamos o "relatorio" para a tela do aluno também!
+        res.render('index', { eixos, relatorio, erro }); 
     } catch (error) {
         console.error("Erro banco de dados:", error);
         res.status(500).send("Erro interno no servidor de banco de dados (Postgres).");
