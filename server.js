@@ -115,10 +115,10 @@ app.get('/aluno', async (req, res) => {
     }
 });
 
-// ================= ROTA 3: INSCREVER E SORTEAR (ATUALIZADA) =================
+// ================= ROTA 3: INSCREVER E SORTEAR =================
 app.post('/inscrever', async (req, res) => {
-    // Pegando todos os dados do formulário, INCLUINDO O CELULAR
-    const { nome, email, celular, curso, turno, periodo, eixo_id } = req.body;
+    // Pegamos apenas os dados originais (sem celular)
+    const { nome, email, curso, turno, periodo, eixo_id } = req.body;
 
     try {
         const gruposRes = await pool.query('SELECT id, nome FROM grupos WHERE eixo_id = $1', [eixo_id]);
@@ -144,8 +144,9 @@ app.post('/inscrever', async (req, res) => {
             }
         }
 
+        // AQUI ESTÁ A PROTEÇÃO: Se não sobrou nenhum grupo com vaga, dá a mensagem de erro!
         if (gruposDisponiveis.length === 0) {
-            req.session.erro = "Todas as equipes deste eixo atingiram o limite!";
+            req.session.erro = "Este eixo já atingiu o limite de vagas! Por favor, escolha outro eixo.";
             return res.redirect('/aluno');
         }
 
@@ -153,15 +154,15 @@ app.post('/inscrever', async (req, res) => {
         const gruposCandidatos = gruposDisponiveis.filter(g => g.total_curso === minCurso);
         const grupoSorteado = gruposCandidatos[Math.floor(Math.random() * gruposCandidatos.length)];
 
-        // Insere o aluno novo salvando também o CELULAR no banco de dados
+        // Insere o aluno novo no banco de dados
         await pool.query(
-            'INSERT INTO alunos (nome, email, celular, curso, turno, periodo, grupo_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-            [nome, email, celular, curso, turno, periodo, grupoSorteado.id]
+            'INSERT INTO alunos (nome, email, curso, turno, periodo, grupo_id) VALUES ($1, $2, $3, $4, $5, $6)',
+            [nome, email, curso, turno, periodo, grupoSorteado.id]
         );
 
-        // BUSCANDO OS COLEGAS: Trazendo nome, curso, CELULAR e PERÍODO para a tela final
+        // Busca quem já está nesse grupo para mostrar na tela (Trazendo o período)
         const colegasRes = await pool.query(
-            'SELECT nome, curso, celular, periodo FROM alunos WHERE grupo_id = $1 ORDER BY nome', 
+            'SELECT nome, curso, periodo FROM alunos WHERE grupo_id = $1 ORDER BY nome', 
             [grupoSorteado.id]
         );
 

@@ -29,15 +29,24 @@
         <% if (colegas && colegas.length> 0) { %>
           <ul style="list-style: none; padding: 0; margin: 0;">
             <% colegas.forEach(function(colega) { %>
+
               <li
-                style="padding: 0.8rem 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-                <strong>
-                  <%= colega.nome %>
-                </strong>
-                <span style="color: #666; font-size: 1.4rem;">
-                  <%= colega.curso %>
-                </span>
+                style="padding: 1rem 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong style="display: block; font-size: 1.6rem; color: var(--text-color);">
+                    <%= colega.nome %>
+                  </strong>
+                </div>
+                <div style="text-align: right;">
+                  <span style="color: #666; font-size: 1.4rem; display: block;">
+                    <%= colega.curso %>
+                  </span>
+                  <span style="color: var(--primary-color); font-size: 1.2rem; font-weight: bold;">
+                    <%= colega.periodo %>º Período
+                  </span>
+                </div>
               </li>
+
               <% }); %>
           </ul>
           <% } else { %>
