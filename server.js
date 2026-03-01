@@ -73,43 +73,52 @@ app.get('/', (req, res) => {
 // ================= ROTA 2: TELA DO ALUNO (ATUALIZADA) =================
 app.get('/aluno', async (req, res) => {
     try {
-        // 1. Busca os eixos para o formulário de inscrição
         const eixosRes = await pool.query('SELECT * FROM eixos');
-        const eixos = eixosRes.rows;
+        let eixos = eixosRes.rows;
 
-        // 2. NOVA PARTE: Monta o relatório público para mostrar na tela
         let relatorio = {};
 
+        // Para cada eixo, vamos descobrir se ele está ESGOTADO
         for (let eixo of eixos) {
             const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1 ORDER BY nome', [eixo.id]);
             relatorio[eixo.nome] = [];
+            
+            // Calculando vagas: Quantidade de grupos * 10 vagas
+            let vagasTotais = gruposRes.rows.length * LIMITE_POR_GRUPO;
+            let vagasOcupadas = 0;
 
             for (let grupo of gruposRes.rows) {
                 const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1 ORDER BY nome', [grupo.id]);
                 const totalCountRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1', [grupo.id]);
+                
+                let qtd = parseInt(totalCountRes.rows[0].qtd);
+                vagasOcupadas += qtd;
 
                 relatorio[eixo.nome].push({
                     nome_grupo: grupo.nome,
-                    total: totalCountRes.rows[0].qtd,
+                    total: qtd,
                     alunos: alunosRes.rows
                 });
             }
+            
+            // Se as vagas ocupadas forem maiores ou iguais as totais, ou se não tiver nenhum grupo criado, ele está LOTADO (true)
+            eixo.lotado = (gruposRes.rows.length === 0) || (vagasOcupadas >= vagasTotais);
         }
 
         const erro = req.session.erro;
         req.session.erro = null; 
         
-        // Agora mandamos o "relatorio" para a tela do aluno também!
         res.render('index', { eixos, relatorio, erro }); 
     } catch (error) {
         console.error("Erro banco de dados:", error);
-        res.status(500).send("Erro interno no servidor de banco de dados (Postgres).");
+        res.status(500).send("Erro interno no servidor de banco de dados.");
     }
 });
 
 // ================= ROTA 3: INSCREVER E SORTEAR (ATUALIZADA) =================
 app.post('/inscrever', async (req, res) => {
-    const { nome, email, curso, turno, periodo, eixo_id } = req.body;
+    // Pegando todos os dados do formulário, INCLUINDO O CELULAR
+    const { nome, email, celular, curso, turno, periodo, eixo_id } = req.body;
 
     try {
         const gruposRes = await pool.query('SELECT id, nome FROM grupos WHERE eixo_id = $1', [eixo_id]);
@@ -144,15 +153,15 @@ app.post('/inscrever', async (req, res) => {
         const gruposCandidatos = gruposDisponiveis.filter(g => g.total_curso === minCurso);
         const grupoSorteado = gruposCandidatos[Math.floor(Math.random() * gruposCandidatos.length)];
 
-        // Insere o aluno novo
+        // Insere o aluno novo salvando também o CELULAR no banco de dados
         await pool.query(
-            'INSERT INTO alunos (nome, email, curso, turno, periodo, grupo_id) VALUES ($1, $2, $3, $4, $5, $6)',
-            [nome, email, curso, turno, periodo, grupoSorteado.id]
+            'INSERT INTO alunos (nome, email, celular, curso, turno, periodo, grupo_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+            [nome, email, celular, curso, turno, periodo, grupoSorteado.id]
         );
 
-        // NOVA PARTE: Busca quem já está nesse grupo para mostrar na tela
+        // BUSCANDO OS COLEGAS: Trazendo nome, curso, CELULAR e PERÍODO para a tela final
         const colegasRes = await pool.query(
-            'SELECT nome, curso FROM alunos WHERE grupo_id = $1 ORDER BY nome', 
+            'SELECT nome, curso, celular, periodo FROM alunos WHERE grupo_id = $1 ORDER BY nome', 
             [grupoSorteado.id]
         );
 

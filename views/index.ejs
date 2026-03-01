@@ -40,6 +40,11 @@
             </div>
 
             <div class="form-group">
+              <label class="form-label">WhatsApp / Celular</label>
+              <input type="tel" name="celular" class="form-control" required placeholder="(99) 99999-9999">
+            </div>
+
+            <div class="form-group">
               <label class="form-label">Curso</label>
               <select name="curso" class="form-control" required>
                 <option value="">Selecione...</option>
@@ -80,10 +85,16 @@
               <select name="eixo_id" class="form-control" required>
                 <option value="">Selecione o Eixo...</option>
                 <% eixos.forEach(function(eixo) { %>
-                  <option value="<%= eixo.id %>">
-                    <%= eixo.nome %>
-                  </option>
-                  <% }); %>
+                  <% if (eixo.lotado) { %>
+                    <option value="<%= eixo.id %>" disabled style="color: #dc3545; font-weight: bold;">
+                      ❌ <%= eixo.nome %> (ESGOTADO)
+                    </option>
+                    <% } else { %>
+                      <option value="<%= eixo.id %>">
+                        ✅ <%= eixo.nome %>
+                      </option>
+                      <% } %>
+                        <% }); %>
               </select>
             </div>
 
@@ -124,8 +135,11 @@
                       <strong>
                         <%= aluno.nome %>
                       </strong>
-                      <span style="color: #888; font-size: 1.2rem;">
-                        <%= aluno.curso %>
+                      <span style="color: #888; font-size: 1.2rem; text-align: right;">
+                        <%= aluno.curso %> <br>
+                          <span style="font-weight: bold; color: #004a9f;">
+                            <%= aluno.periodo %>º P
+                          </span>
                       </span>
                     </li>
                     <% }); %>
