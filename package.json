@@ -4,6 +4,7 @@
     "ejs": "^4.0.1",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
     "express-session": "^1.19.0",
     "mysql2": "^3.18.1",
     "pdfkit": "^0.17.2",
