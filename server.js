@@ -63,7 +63,7 @@ app.get('/aluno', async (req, res) => {
             const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1 ORDER BY nome', [eixo.id]);
             
             let tituloEixo = eixo.professor ? `${eixo.nome} (Prof. ${eixo.professor})` : eixo.nome;
-            relatorio[tituloEixo] = { id: eixo.id, grupos: [] }; // Atualizado
+            relatorio[tituloEixo] = { id: eixo.id, grupos: [] }; 
             
             let vagasTotais = gruposRes.rows.length * LIMITE_POR_GRUPO;
             let vagasOcupadas = 0;
@@ -98,6 +98,18 @@ app.post('/inscrever', async (req, res) => {
     const { nome, email, curso, turno, periodo, eixo_id } = req.body;
 
     try {
+        // ================= TRAVA DE DUPLICIDADE MÁXIMA =================
+        const checkDuplicata = await pool.query(
+            'SELECT id FROM alunos WHERE email = $1 OR LOWER(TRIM(nome)) = LOWER(TRIM($2))', 
+            [email, nome]
+        );
+        
+        if (checkDuplicata.rows.length > 0) {
+            req.session.erro = "❌ Ops! Já encontramos uma inscrição com este E-mail ou Nome Completo. Não é permitido trocar de grupo!";
+            return res.redirect('/aluno');
+        }
+        // ==============================================================
+
         const gruposRes = await pool.query('SELECT id, nome FROM grupos WHERE eixo_id = $1', [eixo_id]);
         const grupos = gruposRes.rows;
         
@@ -166,7 +178,7 @@ app.get('/admin', checkAuth, async (req, res) => {
             const grupos = gruposRes.rows;
             
             let tituloEixo = eixo.professor ? `${eixo.nome} (Prof. ${eixo.professor})` : eixo.nome;
-            relatorio[tituloEixo] = { id: eixo.id, grupos: [] }; // Atualizado para guardar o ID
+            relatorio[tituloEixo] = { id: eixo.id, grupos: [] }; 
 
             for (let grupo of grupos) {
                 const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1 ORDER BY nome', [grupo.id]);
@@ -235,7 +247,6 @@ app.post('/admin/mover_aluno', checkAuth, async (req, res) => {
     }
 });
 
-// NOVA ROTA PARA EXCLUIR O EIXO INTEIRO
 app.post('/admin/excluir_eixo', checkAuth, async (req, res) => {
     const { eixo_id } = req.body;
     try {
@@ -344,7 +355,6 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
         for (let eixo of eixosRes.rows) {
             const nomeEixo = eixo.nome ? String(eixo.nome) : 'Eixo sem nome';
             
-            // O PDF AGORA VAI SAIR EXATAMENTE COMO VOCÊ PEDIU
             const profEixo = eixo.professor ? `. Professor responsável: ${eixo.professor}` : ''; 
             
             doc.fontSize(16).fillColor('#000000').text(`EIXO: ${nomeEixo}${profEixo}`);
