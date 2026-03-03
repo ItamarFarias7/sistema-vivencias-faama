@@ -106,9 +106,9 @@
       <h2 style="color: var(--primary-color); margin-top: 0; margin-bottom: 2rem;">Criar Novo Eixo</h2>
       <form action="/admin/criar_eixo" method="POST" class="row">
         <div class="form-group col">
-          <input type="text" name="nome_eixo" class="form-control" placeholder="Nome (Ex: Saúde)" required>
+          <input type="text" name="nome_eixo" class="form-control" placeholder="Nome (Ex: Saúde)">
         </div>
-        <div class="card" style="margin-bottom: 30px; padding: 2rem; border-top-color: var(--secondary-color);">
+        <div class="card-editar" style="margin-bottom: 30px; padding: 2rem; border-top-color: var(--secondary-color);">
           <h2 style="color: var(--secondary-color); margin-top: 0; margin-bottom: 2rem;">Adicionar/Editar Professor de
             um Eixo</h2>
           <form action="/admin/editar_professor" method="POST" class="row">
@@ -126,7 +126,7 @@
             </div>
 
             <div class="form-group col" style="flex: 2;">
-              <input type="text" name="professor" class="form-control" placeholder="Novo Nome do Professor" required>
+              <input type="text" name="professor" class="form-control" placeholder="Novo Nome do Professor">
             </div>
 
             <button type="submit" class="botao botao-secundario"
@@ -134,13 +134,13 @@
           </form>
         </div>
         <div class="form-group col">
-          <input type="text" name="professor" class="form-control" placeholder="Prof. Responsável" required>
+          <input type="text" name="professor" class="form-control" placeholder="Prof. Responsável">
         </div>
         <div class="form-group col">
-          <input type="text" name="descricao" class="form-control" placeholder="Descrição" required>
+          <input type="text" name="descricao" class="form-control" placeholder="Descrição">
         </div>
         <div class="form-group col" style="max-width: 130px;">
-          <input type="number" name="qtd_grupos" class="form-control" placeholder="Nº Grupos" min="1" required>
+          <input type="number" name="qtd_grupos" class="form-control" placeholder="Nº Grupos" min="1">
         </div>
         <button type="submit" class="botao"
           style="margin-top: 0; max-width: 120px; height: 4.5rem; padding: 0;">Gerar</button>
