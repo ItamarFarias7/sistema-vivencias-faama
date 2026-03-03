@@ -28,7 +28,6 @@ const pool = new Pool({
 });
 
 pool.query(`ALTER TABLE eixos ADD COLUMN IF NOT EXISTS professor VARCHAR(255);`)
-    .then(() => console.log("✅ Coluna de professores garantida no banco de dados!"))
     .catch(err => console.error("Erro ao atualizar banco:", err));
 
 const loginLimiter = rateLimit({
@@ -64,7 +63,7 @@ app.get('/aluno', async (req, res) => {
             const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1 ORDER BY nome', [eixo.id]);
             
             let tituloEixo = eixo.professor ? `${eixo.nome} (Prof. ${eixo.professor})` : eixo.nome;
-            relatorio[tituloEixo] = [];
+            relatorio[tituloEixo] = { id: eixo.id, grupos: [] }; // Atualizado
             
             let vagasTotais = gruposRes.rows.length * LIMITE_POR_GRUPO;
             let vagasOcupadas = 0;
@@ -76,7 +75,7 @@ app.get('/aluno', async (req, res) => {
                 let qtd = parseInt(totalCountRes.rows[0].qtd);
                 vagasOcupadas += qtd;
 
-                relatorio[tituloEixo].push({
+                relatorio[tituloEixo].grupos.push({
                     nome_grupo: grupo.nome,
                     total: qtd,
                     alunos: alunosRes.rows
@@ -167,13 +166,13 @@ app.get('/admin', checkAuth, async (req, res) => {
             const grupos = gruposRes.rows;
             
             let tituloEixo = eixo.professor ? `${eixo.nome} (Prof. ${eixo.professor})` : eixo.nome;
-            relatorio[tituloEixo] = [];
+            relatorio[tituloEixo] = { id: eixo.id, grupos: [] }; // Atualizado para guardar o ID
 
             for (let grupo of grupos) {
                 const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1 ORDER BY nome', [grupo.id]);
                 const totalCountRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1', [grupo.id]);
 
-                relatorio[tituloEixo].push({
+                relatorio[tituloEixo].grupos.push({
                     nome_grupo: grupo.nome,
                     total: totalCountRes.rows[0].qtd,
                     alunos: alunosRes.rows
@@ -199,7 +198,6 @@ app.post('/admin/editar_professor', checkAuth, async (req, res) => {
     }
 });
 
-// NOVA ROTA PARA REMOVER PROFESSOR
 app.post('/admin/remover_professor_eixo', checkAuth, async (req, res) => {
     const { eixo_id } = req.body;
     try {
@@ -237,9 +235,21 @@ app.post('/admin/mover_aluno', checkAuth, async (req, res) => {
     }
 });
 
+// NOVA ROTA PARA EXCLUIR O EIXO INTEIRO
+app.post('/admin/excluir_eixo', checkAuth, async (req, res) => {
+    const { eixo_id } = req.body;
+    try {
+        await pool.query('DELETE FROM eixos WHERE id = $1', [eixo_id]);
+        res.redirect('/admin');
+    } catch (error) {
+        console.error("Erro ao excluir eixo:", error);
+        res.redirect('/admin');
+    }
+});
+
 app.post('/admin/criar_eixo', checkAuth, async (req, res) => {
     let { nome_eixo, descricao, professor, qtd_grupos } = req.body;
-    professor = professor || null; // Se estiver vazio, salva como nulo
+    professor = professor || null; 
     try {
         const result = await pool.query(
             'INSERT INTO eixos (nome, descricao, professor) VALUES ($1, $2, $3) RETURNING id', 
@@ -334,8 +344,8 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
         for (let eixo of eixosRes.rows) {
             const nomeEixo = eixo.nome ? String(eixo.nome) : 'Eixo sem nome';
             
-            // NOVO FORMATO DO PDF SOLICITADO AQUI:
-            const profEixo = eixo.professor ? `. Professor responsável: ${eixo.professor}.` : ''; 
+            // O PDF AGORA VAI SAIR EXATAMENTE COMO VOCÊ PEDIU
+            const profEixo = eixo.professor ? `. Professor responsável: ${eixo.professor}` : ''; 
             
             doc.fontSize(16).fillColor('#000000').text(`EIXO: ${nomeEixo}${profEixo}`);
             doc.moveDown(0.5);
@@ -367,7 +377,7 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
     } catch (error) {
         console.error("Erro EXATO ao exportar PDF:", error);
         if (!res.headersSent) {
-            res.status(500).send("Erro ao gerar o PDF. Verifique os logs no Render.");
+            res.status(500).send("Erro ao gerar o PDF.");
         }
     }
 });

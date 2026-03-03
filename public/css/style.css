@@ -79,7 +79,6 @@ ul {
 
 /* Formulários */
 .form-group {
-  display: flex;
   margin-bottom: 2rem;
 }
 

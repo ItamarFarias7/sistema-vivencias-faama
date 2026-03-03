@@ -84,7 +84,6 @@
       width: 140px;
     }
 
-    /* Novo Layout Flex para o Topo */
     .dashboard-top {
       display: flex;
       gap: 20px;
@@ -166,12 +165,23 @@
 
     </div>
 
-    <% Object.keys(relatorio).forEach(function(nomeEixo) { %>
-      <h3 style="border-bottom: 2px solid #ccc; padding-bottom: 10px; color: #555; margin-top: 30px;">📍 <%= nomeEixo %>
-      </h3>
+    <% Object.keys(relatorio).forEach(function(tituloEixo) { %>
+      <div
+        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-top: 40px;">
+        <h3 style="color: #555; margin: 0;">📍 <%= tituloEixo %>
+        </h3>
 
-      <div class="grid-equipes" style="margin-bottom: 40px;">
-        <% relatorio[nomeEixo].forEach(function(grupo) { %>
+        <form action="/admin/excluir_eixo" method="POST"
+          onsubmit="return confirm('ATENÇÃO: Excluir este eixo apagará TODAS as equipes e os alunos inscritos nele. Tem certeza absoluta?');"
+          style="margin: 0;">
+          <input type="hidden" name="eixo_id" value="<%= relatorio[tituloEixo].id %>">
+          <button type="submit" class="botao"
+            style="background-color: #dc3545; padding: 8px 15px; font-size: 1.4rem;">Excluir Eixo 🗑️</button>
+        </form>
+      </div>
+
+      <div class="grid-equipes" style="margin-bottom: 40px; margin-top: 20px;">
+        <% relatorio[tituloEixo].grupos.forEach(function(grupo) { %>
           <div class="equipe-card">
             <h4 style="margin: 0 0 10px 0; display: flex; justify-content: space-between;">
               <%= grupo.nome_grupo %>
@@ -196,7 +206,7 @@
                     <form action="/admin/mover_aluno" method="POST" style="display: flex; gap: 5px; flex: 1;">
                       <input type="hidden" name="aluno_id" value="<%= aluno.id %>">
                       <select name="novo_grupo_id" class="select-mover" required>
-                        <option value="">Mover para...</option>
+                        <option value="">Mover...</option>
                         <% todosGrupos.forEach(function(tg) { %>
                           <% if (tg.id !==grupo.id) { %>
                             <option value="<%= tg.id %>">
