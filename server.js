@@ -153,10 +153,10 @@ app.post('/inscrever', async (req, res) => {
     }
 });
 
-// ================= ROTA 4: PAINEL ADMIN =================
+// ================= ROTA 4: PAINEL ADMIN (Atualizada) =================
 app.get('/admin', checkAuth, async (req, res) => {
     try {
-        const eixosRes = await pool.query('SELECT * FROM eixos');
+        const eixosRes = await pool.query('SELECT * FROM eixos ORDER BY nome');
         const eixos = eixosRes.rows;
         
         const listaGruposRes = await pool.query(`
@@ -184,10 +184,24 @@ app.get('/admin', checkAuth, async (req, res) => {
                 });
             }
         }
-        res.render('admin', { relatorio, todosGrupos });
+        // A MÁGICA AQUI: Agora mandamos a variável "eixos" para o HTML usar!
+        res.render('admin', { relatorio, todosGrupos, eixos });
     } catch (error) {
         console.error("Erro ao carregar admin:", error);
         res.status(500).send("Erro ao carregar o painel administrativo.");
+    }
+});
+
+// ================= NOVA ROTA: ATUALIZAR PROFESSOR DO EIXO =================
+app.post('/admin/editar_professor', checkAuth, async (req, res) => {
+    const { eixo_id, professor } = req.body;
+    try {
+        // Atualiza apenas o professor daquele eixo específico no banco de dados
+        await pool.query('UPDATE eixos SET professor = $1 WHERE id = $2', [professor, eixo_id]);
+        res.redirect('/admin');
+    } catch (error) {
+        console.error("Erro ao atualizar professor:", error);
+        res.redirect('/admin');
     }
 });
 

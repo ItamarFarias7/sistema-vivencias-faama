@@ -108,6 +108,31 @@
         <div class="form-group col">
           <input type="text" name="nome_eixo" class="form-control" placeholder="Nome (Ex: Saúde)" required>
         </div>
+        <div class="card" style="margin-bottom: 30px; padding: 2rem; border-top-color: var(--secondary-color);">
+          <h2 style="color: var(--secondary-color); margin-top: 0; margin-bottom: 2rem;">Adicionar/Editar Professor de
+            um Eixo</h2>
+          <form action="/admin/editar_professor" method="POST" class="row">
+
+            <div class="form-group col" style="flex: 2;">
+              <select name="eixo_id" class="form-control" required>
+                <option value="">Selecione o Eixo que deseja atualizar...</option>
+                <% eixos.forEach(function(eixo) { %>
+                  <option value="<%= eixo.id %>">
+                    <%= eixo.nome %>
+                      <% if(eixo.professor) { %>(Atual: <%= eixo.professor %>)<% } else { %>(Sem professor)<% } %>
+                  </option>
+                  <% }); %>
+              </select>
+            </div>
+
+            <div class="form-group col" style="flex: 2;">
+              <input type="text" name="professor" class="form-control" placeholder="Novo Nome do Professor" required>
+            </div>
+
+            <button type="submit" class="botao botao-secundario"
+              style="margin-top: 0; max-width: 150px; height: 4.5rem; padding: 0;">Atualizar</button>
+          </form>
+        </div>
         <div class="form-group col">
           <input type="text" name="professor" class="form-control" placeholder="Prof. Responsável" required>
         </div>
