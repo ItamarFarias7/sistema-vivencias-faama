@@ -77,13 +77,9 @@ ul {
   border-top: solid 0.5rem var(--primary-color);
 }
 
-.card-editar {
-  display: flex;
-  margin-left: 40%;
-}
-
 /* Formulários */
 .form-group {
+  display: flex;
   margin-bottom: 2rem;
 }
 
