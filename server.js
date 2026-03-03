@@ -4,7 +4,7 @@ const path = require('path');
 const session = require('express-session');
 const exceljs = require('exceljs');
 const PDFDocument = require('pdfkit');
-const rateLimit = require('express-rate-limit'); // NOVA BIBLIOTECA DE SEGURANÇA
+const rateLimit = require('express-rate-limit'); 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,23 +16,27 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 
-// SEGURANÇA 1: Chave secreta agora busca das variáveis de ambiente
 app.use(session({ 
     secret: process.env.SESSION_SECRET || 'chave_reserva_segura_faama_2026', 
     resave: false, 
     saveUninitialized: true 
 }));
 
-// Conexão com o banco do Render
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
-// SEGURANÇA 2: Limitador de tentativas de login (Força Bruta)
+// ================= MÁGICA AUTOMÁTICA NO BANCO DE DADOS =================
+// Garante que a coluna 'professor' exista na tabela 'eixos' sem apagar os dados
+pool.query(`ALTER TABLE eixos ADD COLUMN IF NOT EXISTS professor VARCHAR(255);`)
+    .then(() => console.log("✅ Coluna de professores garantida no banco de dados!"))
+    .catch(err => console.error("Erro ao atualizar banco:", err));
+
+
 const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 5, // Limite de 5 tentativas erradas
+    windowMs: 15 * 60 * 1000, 
+    max: 5, 
     message: "Muitas tentativas de login incorretas. Sistema bloqueado por 15 minutos por segurança."
 });
 
@@ -44,8 +48,6 @@ function checkAuth(req, res, next) {
         res.redirect('/');
     }
 }
-
-// A ROTA /setup-db FOI EXCLUÍDA POR SEGURANÇA! 🛡️
 
 // ================= ROTA 1: PORTAL INICIAL =================
 app.get('/', (req, res) => {
@@ -63,7 +65,10 @@ app.get('/aluno', async (req, res) => {
 
         for (let eixo of eixos) {
             const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1 ORDER BY nome', [eixo.id]);
-            relatorio[eixo.nome] = [];
+            
+            // Truque Ninja: Junta o nome do eixo com o do professor para a vitrine
+            let tituloEixo = eixo.professor ? `${eixo.nome} (Prof. ${eixo.professor})` : eixo.nome;
+            relatorio[tituloEixo] = [];
             
             let vagasTotais = gruposRes.rows.length * LIMITE_POR_GRUPO;
             let vagasOcupadas = 0;
@@ -75,7 +80,7 @@ app.get('/aluno', async (req, res) => {
                 let qtd = parseInt(totalCountRes.rows[0].qtd);
                 vagasOcupadas += qtd;
 
-                relatorio[eixo.nome].push({
+                relatorio[tituloEixo].push({
                     nome_grupo: grupo.nome,
                     total: qtd,
                     alunos: alunosRes.rows
@@ -164,13 +169,15 @@ app.get('/admin', checkAuth, async (req, res) => {
         for (let eixo of eixos) {
             const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1', [eixo.id]);
             const grupos = gruposRes.rows;
-            relatorio[eixo.nome] = [];
+            
+            let tituloEixo = eixo.professor ? `${eixo.nome} (Prof. ${eixo.professor})` : eixo.nome;
+            relatorio[tituloEixo] = [];
 
             for (let grupo of grupos) {
                 const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1 ORDER BY nome', [grupo.id]);
                 const totalCountRes = await pool.query('SELECT COUNT(*) as qtd FROM alunos WHERE grupo_id = $1', [grupo.id]);
 
-                relatorio[eixo.nome].push({
+                relatorio[tituloEixo].push({
                     nome_grupo: grupo.nome,
                     total: totalCountRes.rows[0].qtd,
                     alunos: alunosRes.rows
@@ -211,9 +218,14 @@ app.post('/admin/mover_aluno', checkAuth, async (req, res) => {
 });
 
 app.post('/admin/criar_eixo', checkAuth, async (req, res) => {
-    const { nome_eixo, descricao, qtd_grupos } = req.body;
+    // Agora pegamos o professor do formulário
+    const { nome_eixo, descricao, professor, qtd_grupos } = req.body;
     try {
-        const result = await pool.query('INSERT INTO eixos (nome, descricao) VALUES ($1, $2) RETURNING id', [nome_eixo, descricao]);
+        // Salvamos o professor no banco de dados junto com o eixo
+        const result = await pool.query(
+            'INSERT INTO eixos (nome, descricao, professor) VALUES ($1, $2, $3) RETURNING id', 
+            [nome_eixo, descricao, professor]
+        );
         const eixoId = result.rows[0].id;
         for (let i = 1; i <= qtd_grupos; i++) {
             await pool.query('INSERT INTO grupos (nome, eixo_id) VALUES ($1, $2)', [`Equipe ${i} - ${nome_eixo}`, eixoId]);
@@ -225,8 +237,7 @@ app.post('/admin/criar_eixo', checkAuth, async (req, res) => {
     }
 });
 
-// ================= ROTA 6: LOGIN (AGORA PROTEGIDA) =================
-// Aplicamos o loginLimiter APENAS na rota que processa a senha
+// ================= ROTA 6: LOGIN =================
 app.post('/login', loginLimiter, (req, res) => {
     if (req.body.senha === SENHA_ADMIN) {
         req.session.logado = true;
@@ -249,7 +260,7 @@ app.get('/admin/exportar/excel', checkAuth, async (req, res) => {
         const worksheet = workbook.addWorksheet('Relatório de Equipes');
 
         worksheet.columns = [
-            { header: 'Eixo', key: 'eixo', width: 20 },
+            { header: 'Eixo', key: 'eixo', width: 35 }, // Aumentei a largura pra caber o nome do prof
             { header: 'Grupo', key: 'grupo', width: 25 },
             { header: 'Nome do Aluno', key: 'nome', width: 30 },
             { header: 'Email', key: 'email', width: 30 },
@@ -260,16 +271,22 @@ app.get('/admin/exportar/excel', checkAuth, async (req, res) => {
 
         const query = `
             SELECT a.nome as aluno_nome, a.email, a.curso, a.turno, a.periodo,
-                   g.nome as grupo_nome, e.nome as eixo_nome
+                   g.nome as grupo_nome, e.nome as eixo_nome, e.professor as eixo_prof
             FROM alunos a JOIN grupos g ON a.grupo_id = g.id JOIN eixos e ON g.eixo_id = e.id
             ORDER BY e.nome, g.nome, a.nome
         `;
         const result = await pool.query(query);
 
         result.rows.forEach(row => {
+            const nomeComProf = row.eixo_prof ? `${row.eixo_nome} (Prof. ${row.eixo_prof})` : row.eixo_nome;
             worksheet.addRow({
-                eixo: row.eixo_nome, grupo: row.grupo_nome, nome: row.aluno_nome,
-                email: row.email, curso: row.curso, turno: row.turno, periodo: row.periodo + 'º'
+                eixo: nomeComProf, 
+                grupo: row.grupo_nome, 
+                nome: row.aluno_nome,
+                email: row.email, 
+                curso: row.curso, 
+                turno: row.turno, 
+                periodo: row.periodo + 'º'
             });
         });
 
@@ -297,7 +314,9 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
 
         for (let eixo of eixosRes.rows) {
             const nomeEixo = eixo.nome ? String(eixo.nome) : 'Eixo sem nome';
-            doc.fontSize(16).fillColor('#000000').text(`EIXO: ${nomeEixo}`);
+            const profEixo = eixo.professor ? ` (Prof. ${eixo.professor})` : ''; // Adicionado o Professor no PDF!
+            
+            doc.fontSize(16).fillColor('#000000').text(`EIXO: ${nomeEixo}${profEixo}`);
             doc.moveDown(0.5);
 
             const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1 ORDER BY nome', [eixo.id]);

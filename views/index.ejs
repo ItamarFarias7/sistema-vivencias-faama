@@ -40,11 +40,6 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">WhatsApp / Celular</label>
-              <input type="tel" name="celular" class="form-control" required placeholder="(99) 99999-9999">
-            </div>
-
-            <div class="form-group">
               <label class="form-label">Curso</label>
               <select name="curso" class="form-control" required>
                 <option value="">Selecione...</option>
@@ -87,11 +82,13 @@
                 <% eixos.forEach(function(eixo) { %>
                   <% if (eixo.lotado) { %>
                     <option value="<%= eixo.id %>" disabled style="color: #dc3545; font-weight: bold;">
-                      ❌ <%= eixo.nome %> (ESGOTADO)
+                      ❌ <%= eixo.nome %>
+                        <% if(eixo.professor){ %>(Prof. <%= eixo.professor %>)<% } %> (ESGOTADO)
                     </option>
                     <% } else { %>
                       <option value="<%= eixo.id %>">
                         ✅ <%= eixo.nome %>
+                          <% if(eixo.professor){ %>(Prof. <%= eixo.professor %>)<% } %>
                       </option>
                       <% } %>
                         <% }); %>

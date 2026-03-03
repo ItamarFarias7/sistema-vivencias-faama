@@ -56,7 +56,6 @@
       border: none;
     }
 
-    /* Estilos novos para as ações do admin */
     .aluno-item {
       padding: 10px 0;
       border-bottom: 1px solid #f1f1f1;
@@ -110,13 +109,16 @@
           <input type="text" name="nome_eixo" class="form-control" placeholder="Nome (Ex: Saúde)" required>
         </div>
         <div class="form-group col">
+          <input type="text" name="professor" class="form-control" placeholder="Prof. Responsável" required>
+        </div>
+        <div class="form-group col">
           <input type="text" name="descricao" class="form-control" placeholder="Descrição" required>
         </div>
-        <div class="form-group col" style="max-width: 150px;">
+        <div class="form-group col" style="max-width: 130px;">
           <input type="number" name="qtd_grupos" class="form-control" placeholder="Nº Grupos" min="1" required>
         </div>
         <button type="submit" class="botao"
-          style="margin-top: 0; max-width: 150px; height: 4.5rem; padding: 0;">Gerar</button>
+          style="margin-top: 0; max-width: 120px; height: 4.5rem; padding: 0;">Gerar</button>
       </form>
     </div>
 
