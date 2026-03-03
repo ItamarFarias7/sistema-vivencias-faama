@@ -27,12 +27,9 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
-// ================= MÁGICA AUTOMÁTICA NO BANCO DE DADOS =================
-// Garante que a coluna 'professor' exista na tabela 'eixos' sem apagar os dados
 pool.query(`ALTER TABLE eixos ADD COLUMN IF NOT EXISTS professor VARCHAR(255);`)
     .then(() => console.log("✅ Coluna de professores garantida no banco de dados!"))
     .catch(err => console.error("Erro ao atualizar banco:", err));
-
 
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
@@ -66,7 +63,6 @@ app.get('/aluno', async (req, res) => {
         for (let eixo of eixos) {
             const gruposRes = await pool.query('SELECT * FROM grupos WHERE eixo_id = $1 ORDER BY nome', [eixo.id]);
             
-            // Truque Ninja: Junta o nome do eixo com o do professor para a vitrine
             let tituloEixo = eixo.professor ? `${eixo.nome} (Prof. ${eixo.professor})` : eixo.nome;
             relatorio[tituloEixo] = [];
             
@@ -153,7 +149,7 @@ app.post('/inscrever', async (req, res) => {
     }
 });
 
-// ================= ROTA 4: PAINEL ADMIN (Atualizada) =================
+// ================= ROTA 4: PAINEL ADMIN =================
 app.get('/admin', checkAuth, async (req, res) => {
     try {
         const eixosRes = await pool.query('SELECT * FROM eixos ORDER BY nome');
@@ -184,7 +180,6 @@ app.get('/admin', checkAuth, async (req, res) => {
                 });
             }
         }
-        // A MÁGICA AQUI: Agora mandamos a variável "eixos" para o HTML usar!
         res.render('admin', { relatorio, todosGrupos, eixos });
     } catch (error) {
         console.error("Erro ao carregar admin:", error);
@@ -192,11 +187,10 @@ app.get('/admin', checkAuth, async (req, res) => {
     }
 });
 
-// ================= NOVA ROTA: ATUALIZAR PROFESSOR DO EIXO =================
+// ================= ROTAS DE GERENCIAMENTO DE PROFESSORES =================
 app.post('/admin/editar_professor', checkAuth, async (req, res) => {
     const { eixo_id, professor } = req.body;
     try {
-        // Atualiza apenas o professor daquele eixo específico no banco de dados
         await pool.query('UPDATE eixos SET professor = $1 WHERE id = $2', [professor, eixo_id]);
         res.redirect('/admin');
     } catch (error) {
@@ -205,7 +199,19 @@ app.post('/admin/editar_professor', checkAuth, async (req, res) => {
     }
 });
 
-// ================= ROTAS DE GESTÃO =================
+// NOVA ROTA PARA REMOVER PROFESSOR
+app.post('/admin/remover_professor_eixo', checkAuth, async (req, res) => {
+    const { eixo_id } = req.body;
+    try {
+        await pool.query('UPDATE eixos SET professor = NULL WHERE id = $1', [eixo_id]);
+        res.redirect('/admin');
+    } catch (error) {
+        console.error("Erro ao remover professor:", error);
+        res.redirect('/admin');
+    }
+});
+
+// ================= ROTAS DE GESTÃO (ALUNOS E EIXOS) =================
 app.post('/admin/excluir_aluno', checkAuth, async (req, res) => {
     const { aluno_id } = req.body;
     try {
@@ -232,10 +238,9 @@ app.post('/admin/mover_aluno', checkAuth, async (req, res) => {
 });
 
 app.post('/admin/criar_eixo', checkAuth, async (req, res) => {
-    // Agora pegamos o professor do formulário
-    const { nome_eixo, descricao, professor, qtd_grupos } = req.body;
+    let { nome_eixo, descricao, professor, qtd_grupos } = req.body;
+    professor = professor || null; // Se estiver vazio, salva como nulo
     try {
-        // Salvamos o professor no banco de dados junto com o eixo
         const result = await pool.query(
             'INSERT INTO eixos (nome, descricao, professor) VALUES ($1, $2, $3) RETURNING id', 
             [nome_eixo, descricao, professor]
@@ -274,7 +279,7 @@ app.get('/admin/exportar/excel', checkAuth, async (req, res) => {
         const worksheet = workbook.addWorksheet('Relatório de Equipes');
 
         worksheet.columns = [
-            { header: 'Eixo', key: 'eixo', width: 35 }, // Aumentei a largura pra caber o nome do prof
+            { header: 'Eixo', key: 'eixo', width: 35 }, 
             { header: 'Grupo', key: 'grupo', width: 25 },
             { header: 'Nome do Aluno', key: 'nome', width: 30 },
             { header: 'Email', key: 'email', width: 30 },
@@ -328,7 +333,9 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
 
         for (let eixo of eixosRes.rows) {
             const nomeEixo = eixo.nome ? String(eixo.nome) : 'Eixo sem nome';
-            const profEixo = eixo.professor ? ` (Prof. ${eixo.professor})` : ''; // Adicionado o Professor no PDF!
+            
+            // NOVO FORMATO DO PDF SOLICITADO AQUI:
+            const profEixo = eixo.professor ? `. Professor responsável: ${eixo.professor}.` : ''; 
             
             doc.fontSize(16).fillColor('#000000').text(`EIXO: ${nomeEixo}${profEixo}`);
             doc.moveDown(0.5);

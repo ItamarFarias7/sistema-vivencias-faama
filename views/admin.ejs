@@ -83,6 +83,19 @@
       font-size: 12px;
       width: 140px;
     }
+
+    /* Novo Layout Flex para o Topo */
+    .dashboard-top {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+
+    .dashboard-card {
+      flex: 1;
+      min-width: 320px;
+    }
   </style>
 </head>
 
@@ -102,49 +115,55 @@
       </div>
     </div>
 
-    <div class="card" style="margin-bottom: 30px; padding: 2rem;">
-      <h2 style="color: var(--primary-color); margin-top: 0; margin-bottom: 2rem;">Criar Novo Eixo</h2>
-      <form action="/admin/criar_eixo" method="POST" class="row">
-        <div class="form-group col">
-          <input type="text" name="nome_eixo" class="form-control" placeholder="Nome (Ex: Saúde)">
-        </div>
-        <div class="card" style="margin-bottom: 30px; padding: 2rem; border-top-color: var(--secondary-color);">
-          <h2 style="color: var(--secondary-color); margin-top: 0; margin-bottom: 2rem;">Adicionar/Editar Professor de
-            um Eixo</h2>
-          <form action="/admin/editar_professor" method="POST" class="row">
+    <div class="dashboard-top">
 
-            <div class="form-group col" style="flex: 2;">
-              <select name="eixo_id" class="form-control" required>
-                <option value="">Selecione o Eixo que deseja atualizar...</option>
-                <% eixos.forEach(function(eixo) { %>
-                  <option value="<%= eixo.id %>">
-                    <%= eixo.nome %>
-                      <% if(eixo.professor) { %>(Atual: <%= eixo.professor %>)<% } else { %>(Sem professor)<% } %>
-                  </option>
+      <div class="card dashboard-card" style="padding: 2rem;">
+        <h2 style="color: var(--primary-color); margin-top: 0; margin-bottom: 2rem;">Criar Novo Eixo</h2>
+        <form action="/admin/criar_eixo" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
+          <input type="text" name="nome_eixo" class="form-control" placeholder="Nome (Ex: Saúde)" required>
+          <input type="text" name="professor" class="form-control" placeholder="Prof. Responsável (Opcional)">
+          <input type="text" name="descricao" class="form-control" placeholder="Descrição" required>
+          <input type="number" name="qtd_grupos" class="form-control" placeholder="Nº de Equipes" min="1" required>
+          <button type="submit" class="botao" style="width: 100%;">Gerar Eixo</button>
+        </form>
+      </div>
+
+      <div class="card dashboard-card" style="padding: 2rem; border-top-color: var(--secondary-color);">
+        <h2 style="color: var(--secondary-color); margin-top: 0; margin-bottom: 2rem;">Gerenciar Professores</h2>
+
+        <form action="/admin/editar_professor" method="POST"
+          style="display: flex; flex-direction: column; gap: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; margin-bottom: 15px;">
+          <select name="eixo_id" class="form-control" required>
+            <option value="">Selecione o Eixo para editar...</option>
+            <% eixos.forEach(function(eixo) { %>
+              <option value="<%= eixo.id %>">
+                <%= eixo.nome %>
+                  <% if(eixo.professor) { %>(Atual: <%= eixo.professor %>)<% } else { %>(Sem professor)<% } %>
+              </option>
+              <% }); %>
+          </select>
+          <input type="text" name="professor" class="form-control" placeholder="Novo Nome do Professor" required>
+          <button type="submit" class="botao botao-secundario" style="width: 100%;">Atualizar Professor</button>
+        </form>
+
+        <form action="/admin/remover_professor_eixo" method="POST"
+          style="display: flex; flex-direction: column; gap: 15px;"
+          onsubmit="return confirm('Tem certeza que deseja remover o professor deste eixo?');">
+          <select name="eixo_id" class="form-control" required>
+            <option value="">Selecione o Eixo para remover...</option>
+            <% eixos.forEach(function(eixo) { %>
+              <% if(eixo.professor) { %>
+                <option value="<%= eixo.id %>">
+                  <%= eixo.nome %> (Prof. <%= eixo.professor %>)
+                </option>
+                <% } %>
                   <% }); %>
-              </select>
-            </div>
+          </select>
+          <button type="submit" class="botao" style="background-color: #dc3545; width: 100%;">Remover Professor
+            ❌</button>
+        </form>
+      </div>
 
-            <div class="form-group col" style="flex: 2;">
-              <input type="text" name="professor" class="form-control" placeholder="Novo Nome do Professor">
-            </div>
-
-            <button type="submit" class="botao botao-secundario"
-              style="margin-top: 0; max-width: 150px; height: 4.5rem; padding: 0;">Atualizar</button>
-          </form>
-        </div>
-        <div class="form-group col">
-          <input type="text" name="professor" class="form-control" placeholder="Prof. Responsável">
-        </div>
-        <div class="form-group col">
-          <input type="text" name="descricao" class="form-control" placeholder="Descrição">
-        </div>
-        <div class="form-group col" style="max-width: 130px;">
-          <input type="number" name="qtd_grupos" class="form-control" placeholder="Nº Grupos" min="1">
-        </div>
-        <button type="submit" class="botao"
-          style="margin-top: 0; max-width: 120px; height: 4.5rem; padding: 0;">Gerar</button>
-      </form>
     </div>
 
     <% Object.keys(relatorio).forEach(function(nomeEixo) { %>
@@ -197,7 +216,6 @@
                         style="background: #dc3545; padding: 4px 8px; font-size: 12px;">Excluir</button>
                     </form>
                   </div>
-
                 </li>
                 <% }); %>
             </ul>
