@@ -27,9 +27,11 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
+// Garante que o banco tenha a coluna de professor sem apagar os dados
 pool.query(`ALTER TABLE eixos ADD COLUMN IF NOT EXISTS professor VARCHAR(255);`)
     .catch(err => console.error("Erro ao atualizar banco:", err));
 
+// ================= TRAVA DE SEGURANÇA: FORÇA BRUTA =================
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
     max: 5, 
@@ -142,6 +144,7 @@ app.post('/inscrever', async (req, res) => {
         const gruposCandidatos = gruposDisponiveis.filter(g => g.total_curso === minCurso);
         const grupoSorteado = gruposCandidatos[Math.floor(Math.random() * gruposCandidatos.length)];
 
+        // O e-mail já estava sendo salvo aqui, então não precisou mudar nada no banco!
         await pool.query(
             'INSERT INTO alunos (nome, email, curso, turno, periodo, grupo_id) VALUES ($1, $2, $3, $4, $5, $6)',
             [nome, email, curso, turno, periodo, grupoSorteado.id]
@@ -303,7 +306,7 @@ app.get('/admin/exportar/excel', checkAuth, async (req, res) => {
             { header: 'Eixo', key: 'eixo', width: 35 }, 
             { header: 'Grupo', key: 'grupo', width: 25 },
             { header: 'Nome do Aluno', key: 'nome', width: 30 },
-            { header: 'Email', key: 'email', width: 30 },
+            { header: 'Email', key: 'email', width: 35 }, // Coluna do Email
             { header: 'Curso', key: 'curso', width: 25 },
             { header: 'Turno', key: 'turno', width: 15 },
             { header: 'Período', key: 'periodo', width: 10 }
@@ -342,7 +345,8 @@ app.get('/admin/exportar/excel', checkAuth, async (req, res) => {
 
 app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
     try {
-        const doc = new PDFDocument();
+        // Reduzi um pouquinho as margens para caber o e-mail tranquilamente na folha A4
+        const doc = new PDFDocument({ margin: 40 }); 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename=relatorio_equipes_faama.pdf');
         doc.pipe(res);
@@ -354,7 +358,6 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
 
         for (let eixo of eixosRes.rows) {
             const nomeEixo = eixo.nome ? String(eixo.nome) : 'Eixo sem nome';
-            
             const profEixo = eixo.professor ? `. Professor responsável: ${eixo.professor}` : ''; 
             
             doc.fontSize(16).fillColor('#000000').text(`EIXO: ${nomeEixo}${profEixo}`);
@@ -366,6 +369,7 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
                 const nomeGrupo = grupo.nome ? String(grupo.nome) : 'Grupo sem nome';
                 doc.fontSize(14).fillColor('#28a745').text(`  ${nomeGrupo}`);
                 
+                // Puxando todos os dados do aluno do banco de dados (o e-mail vem junto automaticamente com o "SELECT *")
                 const alunosRes = await pool.query('SELECT * FROM alunos WHERE grupo_id = $1 ORDER BY nome', [grupo.id]);
                 
                 if (alunosRes.rows.length === 0) {
@@ -375,8 +379,10 @@ app.get('/admin/exportar/pdf', checkAuth, async (req, res) => {
                         const nomeAluno = aluno.nome ? String(aluno.nome) : 'Aluno sem nome';
                         const cursoAluno = aluno.curso ? String(aluno.curso) : 'Curso N/A';
                         const periodoAluno = aluno.periodo ? String(aluno.periodo) : '-';
+                        const emailAluno = aluno.email ? String(aluno.email) : 'Sem E-mail'; // AQUI O E-MAIL!
                         
-                        doc.fontSize(12).fillColor('#333333').text(`    - ${nomeAluno} (${cursoAluno}, ${periodoAluno}º P)`);
+                        // Agora a linha do PDF mostra Nome, Curso, Período e o E-mail de contato!
+                        doc.fontSize(12).fillColor('#333333').text(`    - ${nomeAluno} (${cursoAluno}, ${periodoAluno}º P) | E-mail: ${emailAluno}`);
                     });
                 }
                 doc.moveDown(0.5);
